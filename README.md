@@ -1,72 +1,82 @@
-# Shelf library circulation
+# Shelf
 
-Shelf helps a small campus library issue books, manage waiting lists and see what is available. It runs in a console and stores a single JSON snapshot.
+Shelf is a C# console application for a small university library. A librarian can check out and return books, extend loans, manage a waiting list, and see how many copies are available. The program saves the current library state in a JSON file.
 
-- **Course** Introduction to Functional Programming · **Group** IT-2512
+## Project information
+
+- **Course** Introduction to Functional Programming
+- **Group** IT-2512
 - **Team** Amirebay Alikhan, Zharkyn Bolat, Sekerkhanov Sultan, Baiqonyr Erasyl
+- **Repository** [Alikhan808/Shelf-IT2512](https://github.com/Alikhan808/Shelf-IT2512)
+- **Branch** `main`
+- **Verified source commit** [`91164ed34085fd63a422b5da2783a0603b9a2658`](https://github.com/Alikhan808/Shelf-IT2512/commit/91164ed34085fd63a422b5da2783a0603b9a2658)
 
 ## Build and run
 
-Use Windows x64, PowerShell and the x64 .NET SDK 8.0.425 (or a later patch in the same SDK feature band). Run the commands from the repository root. No NuGet packages are needed. The checked-in x64 DLL is copied beside both managed entry points by MSBuild. A path containing spaces works when quoted.
+The project was tested on Windows x64 with .NET SDK 8.0.425. It uses no external NuGet packages. Open PowerShell in the `Shelf_Source` folder containing `Shelf.sln`.
 
 ```powershell
-dotnet --version
 dotnet build Shelf.sln -c Release -m:1
 New-Item -ItemType Directory -Force demo | Out-Null
 Copy-Item data/sample.json demo/library.json
 dotnet run --project src/Shelf -c Release --no-build -- --data demo/library.json sections
-dotnet run --project src/Shelf -c Release --no-build -- --help
-dotnet run --project tests/Shelf.Tests -c Release --no-build
 ```
 
-The last command runs 31 automated tests, including JSON validation, complete workflows, both reports and calls to the actual native library. The executable assertion suite prints each result and returns 0 on success or 1 if any test fails. To run the scripted console demonstration after building:
+Use `--data` to choose a JSON file. `data/sample.json` contains example books, members and loans. `data/empty.json` is an empty library. Use a copy of the sample for the demo so you can start again with the same data.
+
+## Commands
+
+Pass these commands after `--data demo/library.json`.
+
+| Command | What it does |
+| --- | --- |
+| `checkout TITLE MEMBER YYYY-MM-DD campus\|exam` | Lends an available copy for 14 days if the member is below the loan limit. |
+| `renew TITLE MEMBER YYYY-MM-DD` | Extends the original due date by 7 days. A loan can be renewed once, during its original period, if nobody is waiting for that title. |
+| `return TITLE MEMBER YYYY-MM-DD` | Closes an active loan and shows the late fee. |
+| `reserve TITLE MEMBER` | Adds the member to the waiting list when no copy is available for walk-in checkout. |
+| `collect TITLE MEMBER YYYY-MM-DD campus\|exam` | Lends an available copy to the first member in the waiting list and removes their reservation. |
+| `retire TITLE` | Removes one free, unreserved copy. The library keeps at least one copy of the title. |
+| `overdue YYYY-MM-DD all\|week` | Lists active loans that are at least 1 or 7 days overdue. |
+| `sections` | Shows total copies, checked-out copies, walk-in availability and waiting-list size by section. |
+
+For example, on a fresh copy of the sample data, M01 already has one active loan. The `exam` policy rejects the first command below. The `campus` policy allows the second and sets the due date to `2026-11-26`.
 
 ```powershell
+dotnet run --project src/Shelf -c Release --no-build -- --data demo/library.json checkout B201 M01 2026-11-12 exam
+dotnet run --project src/Shelf -c Release --no-build -- --data demo/library.json checkout B201 M01 2026-11-12 campus
+```
+
+## How the code is organised
+
+- `src/Shelf/Core/Models.cs` defines books, members, loans and reservations. Factory methods validate the input before creating a value.
+- `src/Shelf/Core/Circulation.cs` contains the lending rules. Checkout runs through `ResolveBorrower`, `PlanIssue` and `CommitIssue`. `PlanIssue` takes a function that sets the loan limit, so the pipeline works with both policies.
+- `src/Shelf/Core/Result.cs` contains `Result` and `Lookup`. `Map`, `Bind` and `Require` help pass successful values through the pipeline and stop it when a step fails.
+- `src/Shelf/Core/Reports.cs` builds both reports. `OverdueFrom` is partially applied with thresholds of 1 and 7 days. The iterator uses `yield return`, and the report converts the sorted rows to an array before printing. The sections report groups and sums figures by section.
+- `src/Shelf/Boundary/JsonStore.cs` loads and validates JSON. A successful update returns a new library state, which is saved through a temporary file. A lock prevents two copies of the app from writing to the same file at once.
+- `src/Shelf/Boundary/NativeFee.cs` connects C# to the C fee function. `src/Shelf/Program.cs` handles command-line arguments and prints the result.
+
+## Native fee library
+
+`shelf_fee.c` calculates the late fee at 100 KZT per day, up to 3,000 KZT. C# calls it through P/Invoke when a loan is returned. If the DLL cannot be loaded, the program reports the error and keeps the loan open.
+
+The Windows x64 DLL is included in `runtimes/win-x64/native/`. The .NET build copies it to the output folder. To build it from source, add Zig 0.15.2 to your PATH and run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File native/build.ps1
+dotnet build Shelf.sln -c Release -m:1
+```
+
+## Tests and demo
+
+Run these commands after the Release build:
+
+```powershell
+dotnet run --project tests/Shelf.Tests -c Release --no-build
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/demo.ps1
 ```
 
-To rebuild the DLL, extract [Zig 0.15.2 Windows x86_64](https://ziglang.org/download/0.15.2/zig-x86_64-windows-0.15.2.zip), add its directory to PATH, or pass the full path to zig.exe with `-Zig`. Run the managed build again after any C change.
+All 31 tests passed on the verified version. They cover loan limits, waiting-list order, date validation, reports on empty data, malformed JSON, interrupted updates and calls to the native library. The demo also shows an expected checkout failure and a return that charges 500 KZT for five late days.
 
-```powershell
-zig version
-powershell -NoProfile -ExecutionPolicy Bypass -File native/build.ps1
-dotnet build Shelf.sln -c Release -m:1
-dotnet run --project tests/Shelf.Tests -c Release --no-build
-```
+## Limitations
 
-The build script calls Zig's C compiler in C17 mode and targets x86_64 Windows GNU. The ABI is C calling convention with signed 32-bit arguments and result, and an internal 64-bit product. The binding searches beside the managed assembly for `shelf_fee.dll`. If that library or export is unavailable, the CLI reports `native-unavailable` and keeps the loan open.
-
-## Commands and rules
-
-Prefix each command below with `dotnet run --project src/Shelf -c Release --no-build -- --data demo/library.json`.
-
-| Command | Business result |
-| --- | --- |
-| `checkout TITLE MEMBER YYYY-MM-DD campus\|exam` | Issues an unpromised copy for 14 days if the member is below the selected loan limit. |
-| `renew TITLE MEMBER YYYY-MM-DD` | Adds seven days to the original due date, once, during the initial period and with no waiting list. |
-| `return TITLE MEMBER YYYY-MM-DD` | Checks chronology, quotes the late fee via the C DLL, then closes the active loan. The fee is 100 KZT per day, capped at 3,000 KZT. |
-| `reserve TITLE MEMBER` | Adds a member to the FIFO queue when no walk-in copy is available. A member can have one active loan or one reservation for that title. |
-| `collect TITLE MEMBER YYYY-MM-DD campus\|exam` | Issues to the first queued member once a copy is physically available and the policy allows it. It removes the hold in the same transition. |
-| `retire TITLE` | Reduces capacity by one if a spare copy is free and unpromised. It preserves at least one catalog copy. |
-| `overdue YYYY-MM-DD all\|week` | Lists active loans at least one or seven days late, respectively. Ties are sorted by title and member IDs. |
-| `sections` | Groups titles by section and sums total stock, loans, unpromised stock and queue length. Ties use ordinal section name. |
-
-On two identical copies of the sample, try `checkout B201 M01 2026-11-12 exam` and then `checkout B201 M01 2026-11-12 campus`. M01 already has one loan. Exam rejects with `loan-limit`. Campus issues B201 with due date 2026-11-26. Campus limits for standard/extended members are 2/4. Exam limits are 1/2. The dates are explicit inputs rather than today's system date. The overdue report applies a cutoff to the current snapshot.
-
-## Source map
-
-- `Core/Models.cs` and `Core/Library.cs` validate local fields and relationships. Immutable collections preserve the caller's snapshot.
-- `Core/Circulation.cs` contains `ResolveBorrower → PlanIssue → CommitIssue`, the other transitions and both borrowing policies. `Core/Result.cs` contains `Result`, `Lookup` and the used `Map`, `Bind` and `Require` extensions.
-- `Core/Reports.cs` partially applies `OverdueFrom` with thresholds of 1 and 7. `StreamOverdue` defers enumeration, and `Overdue` materialises the sorted array. `Availability` groups the same data by section.
-- `Boundary/JsonStore.cs` owns file streams and deserialises version 1 JSON. `Boundary/NativeFee.cs` owns the managed interop boundary. `Program.cs` parses arguments, dispatches operations and prints results.
-- `tests/Shelf.Tests/Program.cs` asserts domain results, complete persisted workflows, reports, file errors and real native execution.
-
-## State files and limitations
-
-Use `--data` to select an existing file. Samples are `data/sample.json` and `data/empty.json`. JSON has four required arrays (titles, members, loans and holds) with unique IDs and valid references. A property name may appear once per JSON object. The reader accepts UTF-8 with or without a byte order mark. For an active loan, `renewedOn` is either an ISO date or `null`. Queue order follows the order of holds in the file.
-
-A writer holds an exclusive sidecar `.lock` stream across load, calculation and replacement. The lock file remains beside the JSON and its open handle controls ownership. The app writes a unique temporary file in the target directory, flushes and closes it, then replaces the original. A failed domain or native step never reaches the save. Reports reuse an in-memory snapshot with no open data stream. Use a local writable NTFS directory and a consistent path for each dataset. File locking covers Shelf processes using the same path. A lock error can be retried.
-
-The demo stores current activity. A returned loan and its fee are not saved as history. Holds remain until collected, and each borrower manages a title by ID instead of a physical barcode. New members and titles are supplied through validated JSON. There is no payment collection, notification, authentication or historical reporting.
-
-.
+Shelf stores active loans and reservations. When a loan is returned, the app prints the fee and removes the loan from active records. It does not keep payment or return history. To add books or members, edit the JSON file. The included native library targets Windows x64.
