@@ -65,6 +65,7 @@ switch (command, tokens)
         return Failure("usage", "Invalid command or arguments. Use --help for syntax.", 2);
 }
 
+                      
 static bool TryDate(string text, out DateOnly date) =>
     DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
 
