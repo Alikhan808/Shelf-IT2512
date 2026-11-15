@@ -6,7 +6,7 @@ Shelf is a C# console application for a small university library. A librarian ca
 
 - **Course** Introduction to Functional Programming
 - **Group** IT-2512
-- **Team** Amirebay Alikhan, Zharkyn Bolat, Sekerkhanov Sultan, Baiqonyr Erasyl
+- **Team** Amirebay Alikhan, Zharkyn Bolat, Sekerhanov Sultan, Baiqonyr Erasyl
 - **Repository** [Alikhan808/Shelf-IT2512](https://github.com/Alikhan808/Shelf-IT2512)
 - **Branch** `main`
 - **Verified source commit** [`91164ed34085fd63a422b5da2783a0603b9a2658`](https://github.com/Alikhan808/Shelf-IT2512/commit/91164ed34085fd63a422b5da2783a0603b9a2658)
