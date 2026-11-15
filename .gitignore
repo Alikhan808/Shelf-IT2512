@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+.vs/
+.idea/
+demo/
+*.lock
+*.tmp
+/native/zig-cache/
+/runtimes/win-x64/native/*.lib
+/runtimes/win-x64/native/*.pdb

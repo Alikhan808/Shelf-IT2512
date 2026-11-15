@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup>
+    <None Include="../../runtimes/win-x64/native/shelf_fee.dll" Condition="Exists('../../runtimes/win-x64/native/shelf_fee.dll')" Link="shelf_fee.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
