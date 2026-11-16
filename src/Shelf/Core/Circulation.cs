@@ -6,14 +6,14 @@ public static class LoanPolicies
     {
         Membership.Standard => 2,
         Membership.Extended => 4,
-        _ => throw new InvalidOperationException("Unexpected membership.")
+        _ => throw new InvalidOperationException("Unexpected membership")
     };
 
     public static int ExamWeek(Member member) => member.Tier switch
     {
         Membership.Standard => 1,
         Membership.Extended => 2,
-        _ => throw new InvalidOperationException("Unexpected membership.")
+        _ => throw new InvalidOperationException("Unexpected membership")
     };
 }
 
