@@ -425,8 +425,3 @@ static void Equal<T>(T expected, T actual)
         throw new InvalidOperationException($"Expected {expected}, received {actual}.");
 }
 
-static void Sequence<T>(IEnumerable<T> expected, IEnumerable<T> actual)
-{
-    if (!expected.SequenceEqual(actual))
-        throw new InvalidOperationException($"Expected [{string.Join(", ", expected)}], received [{string.Join(", ", actual)}].");
-}
